@@ -383,7 +383,7 @@ static inline MDCFlexibleHeaderShiftBehavior ShiftBehaviorForCurrentAppContext(
       bounds.size.height = self.computedMinimumHeight;
       self.bounds = bounds;
       CGPoint position = self.center;
-      position.y = -MIN([self fhv_accumulatorMax], _shiftAccumulator);
+      position.y = -MAX(0, MIN([self fhv_accumulatorMax], _shiftAccumulator));
       position.y += self.bounds.size.height / 2;
       self.center = position;
       [self.delegate flexibleHeaderViewFrameDidChange:self];
@@ -599,6 +599,11 @@ static inline MDCFlexibleHeaderShiftBehavior ShiftBehaviorForCurrentAppContext(
           _shiftAccumulator < [self fhv_accumulatorMax]);
 }
 
+- (BOOL)fhv_isPartiallyExpanded {
+  return ([self fhv_isDetachedFromTopOfContent] && _shiftAccumulator < 0 &&
+          _shiftAccumulator > -(self.maximumHeight - self.minimumHeight));
+}
+
 // The flexible header is "in front of" the content.
 - (BOOL)fhv_isDetachedFromTopOfContent {
   // Epsilon here is somewhat large in order to be visually-forgiving for sub-point situations.
@@ -700,7 +705,18 @@ static inline MDCFlexibleHeaderShiftBehavior ShiftBehaviorForCurrentAppContext(
   // Erase any scrollback that was injected into the accumulator by capping it back down.
   _shiftAccumulator = MIN([self fhv_accumulatorMax], _shiftAccumulator);
 
-  CGFloat destination = _wantsToBeHidden ? [self fhv_accumulatorMax] : 0;
+
+  CGFloat destination;
+  if (_shiftAccumulator > 0) { // Shifted
+    destination = _wantsToBeHidden ? [self fhv_accumulatorMax] : 0;
+
+  } else if (_shiftAccumulator < 0) { // Expanded
+    destination = _wantsToBeHidden ? 0 : [self fhv_accumulatorMin];
+
+  } else {
+    destination = 0;
+  }
+
   CGFloat distanceToDestination = destination - _shiftAccumulator;
 
   NSTimeInterval duration = displayLink.duration;
@@ -711,7 +727,8 @@ static inline MDCFlexibleHeaderShiftBehavior ShiftBehaviorForCurrentAppContext(
 
   // This is a simple "force" that's stronger the further we are from the destination.
   _shiftAccumulator += kAttachmentCoefficient * distanceToDestination * duration;
-  _shiftAccumulator = MAX(0, MIN([self fhv_accumulatorMax], _shiftAccumulator));
+  _shiftAccumulator = MAX([self fhv_accumulatorMin],
+                          MIN([self fhv_accumulatorMax], _shiftAccumulator));
 
   [_statusBarShifter setOffset:_shiftAccumulator];
 
@@ -738,7 +755,7 @@ static inline MDCFlexibleHeaderShiftBehavior ShiftBehaviorForCurrentAppContext(
 
   CGFloat frameBottomEdge = [self fhv_projectedHeaderBottomEdge];
   frameBottomEdge = MAX(0, MIN(kShadowScaleLength, frameBottomEdge));
-  CGFloat boundedAccumulator = MIN([self fhv_accumulatorMax], _shiftAccumulator);
+  CGFloat boundedAccumulator = MAX(0, MIN([self fhv_accumulatorMax], _shiftAccumulator));
 
   CGFloat shadowIntensity;
   if (self.hidesStatusBarWhenCollapsed) {
@@ -799,6 +816,28 @@ static inline MDCFlexibleHeaderShiftBehavior ShiftBehaviorForCurrentAppContext(
 
 #pragma mark Layout
 
+- (CGFloat)fhv_accumulatorMin {
+  CGFloat offsetWithoutInset = [self fhv_contentOffsetWithoutInjectedTopInset];
+  CGFloat headerHeight = -offsetWithoutInset;
+
+  CGFloat lowerBound;
+
+  if (self.canAlwaysExpandToMaximumHeight) {
+    if (headerHeight < self.computedMinimumHeight) {
+      // The header is detached from the content and able to fully expand.
+      lowerBound = MIN(0, -(self.maximumHeight - self.minimumHeight));
+    } else {
+      // We're now attached to the content and need to constrain our possible expansion.
+      lowerBound = MIN(0, -(self.computedMaximumHeight - headerHeight));
+    }
+
+  } else {
+    lowerBound = 0;
+  }
+
+  return lowerBound;
+}
+
 - (void)fhv_updateLayout {
   if (!_trackingScrollView) {
     return;
@@ -848,15 +887,16 @@ static inline MDCFlexibleHeaderShiftBehavior ShiftBehaviorForCurrentAppContext(
     }
 
     if (![self fhv_isOverExtendingBottom] && !_shiftAccumulatorDisplayLink) {
-      // When we're not allowed to shift offscreen, only allow the header to shift further
-      // on-screen in case it was previously off-screen due to a behavior change.
-      if (![self fhv_canShiftOffscreen]) {
-        deltaY = MIN(0, deltaY);
-      }
-
       // When scrubbing we only allow the header to shrink and shift off-screen.
       if (self.trackingScrollViewIsBeingScrubbed) {
         deltaY = MAX(0, deltaY);
+      }
+
+      if (self.canAlwaysExpandToMaximumHeight) {
+        // When still attached to the top content, don't accumulate negatively.
+        if (headerHeight >= self.computedMinimumHeight) {
+          deltaY = MAX(0, deltaY);
+        }
       }
 
       // Check if our delta y will cause us to cross the boundary from shrinking to shifting and,
@@ -882,7 +922,10 @@ static inline MDCFlexibleHeaderShiftBehavior ShiftBehaviorForCurrentAppContext(
 
       CGFloat upperBound;
 
-      if (headerHeight < 0) {
+      if (![self fhv_canShiftOffscreen]) {
+        // Don't allow any shifting.
+        upperBound = 0;
+      } else if (headerHeight < 0) {
         // Header is shifting while detached from content.
         upperBound = [self fhv_accumulatorMax] + [self fhv_anchorLength];
       } else if (headerHeight < self.computedMinimumHeight) {
@@ -893,26 +936,16 @@ static inline MDCFlexibleHeaderShiftBehavior ShiftBehaviorForCurrentAppContext(
         upperBound = 0;
       }
 
+      CGFloat lowerBound = [self fhv_accumulatorMin];
+
       // Ensure that we don't lose any deltaY by first capping the accumulator within its valid
       // range.
       _shiftAccumulator = MIN(upperBound, _shiftAccumulator);
 
       // Accumulate the deltaY.
-      _shiftAccumulator = MAX(0, MIN(upperBound, _shiftAccumulator + deltaY));
+      _shiftAccumulator = MAX(lowerBound, MIN(upperBound, _shiftAccumulator + deltaY));
     }
   }
-
-  CGRect bounds = self.bounds;
-
-  if (_canOverExtend && !UIAccessibilityIsVoiceOverRunning()) {
-    bounds.size.height = MAX(self.computedMinimumHeight, headerHeight);
-
-  } else {
-    bounds.size.height = MAX(self.computedMinimumHeight,
-                             MIN(self.computedMaximumHeight, headerHeight));
-  }
-
-  self.bounds = bounds;
 
   [self fhv_commitAccumulatorToFrame];
 
@@ -932,8 +965,26 @@ static inline MDCFlexibleHeaderShiftBehavior ShiftBehaviorForCurrentAppContext(
 
 // Commit the current shiftOffscreenAccumulator value to the view's position.
 - (void)fhv_commitAccumulatorToFrame {
+  CGFloat offsetWithoutInset = [self fhv_contentOffsetWithoutInjectedTopInset];
+  CGFloat headerHeight = -offsetWithoutInset;
+
+  CGRect bounds = self.bounds;
+
+  CGFloat additionalHeightInjection = MAX(0, -_shiftAccumulator);
+
+  if (_canOverExtend && !UIAccessibilityIsVoiceOverRunning()) {
+    bounds.size.height = MAX(self.computedMinimumHeight, headerHeight) + additionalHeightInjection;
+
+  } else {
+    bounds.size.height = MAX(self.computedMinimumHeight,
+                             MIN(self.computedMaximumHeight,
+                                 headerHeight)) + additionalHeightInjection;
+  }
+
+  self.bounds = bounds;
+
   CGPoint position = self.center;
-  CGFloat shiftOffset = MIN([self fhv_accumulatorMax], _shiftAccumulator);
+  CGFloat shiftOffset = MAX(0, MIN([self fhv_accumulatorMax], _shiftAccumulator));
   // Offset the frame.
   position.y = -shiftOffset;
   position.y += self.bounds.size.height / 2;
@@ -952,7 +1003,7 @@ static inline MDCFlexibleHeaderShiftBehavior ShiftBehaviorForCurrentAppContext(
     view.alpha = 1 - percentShiftedAlongThreshold;
   }
 
-  [_statusBarShifter setOffset:_shiftAccumulator];
+  [_statusBarShifter setOffset:shiftOffset];
 
   [self.delegate flexibleHeaderViewFrameDidChange:self];
 }
@@ -1139,13 +1190,13 @@ static BOOL isRunningiOS10_3OrAbove() {
   if (![self fhv_canShiftOffscreen]) {
     _wantsToBeHidden = NO;
   }
-  if (!willDecelerate && [self fhv_isPartiallyShifted]) {
+  if (!willDecelerate && ([self fhv_isPartiallyShifted] || [self fhv_isPartiallyExpanded])) {
     [self fhv_startDisplayLink];
   }
 }
 
 - (void)trackingScrollViewDidEndDecelerating {
-  if ([self fhv_isPartiallyShifted]) {
+  if ([self fhv_isPartiallyShifted] || [self fhv_isPartiallyExpanded]) {
     _wantsToBeHidden =
         (_shiftAccumulator >= (1 - kMinimumVisibleProportion) * [self fhv_accumulatorMax]);
     [self fhv_startDisplayLink];

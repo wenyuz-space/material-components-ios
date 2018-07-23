@@ -98,6 +98,10 @@
     case FlexibleHeaderConfiguratorFieldMinMaxHeightIncludeSafeArea:
       headerView.minMaxHeightIncludesSafeArea = [value boolValue];
       break;
+
+    case FlexibleHeaderConfiguratorFieldCanAlwaysExpandToMaximumHeight:
+      headerView.canAlwaysExpandToMaximumHeight = [value boolValue];
+      break;
   }
 }
 
@@ -212,8 +216,12 @@ static const CGFloat kHeightScalar = 300;
 
     case FlexibleHeaderConfiguratorFieldMaximumHeight:
       return @([self normalizedHeight:self.fhvc.headerView.maximumHeight]);
+
     case FlexibleHeaderConfiguratorFieldMinMaxHeightIncludeSafeArea:
       return @(self.fhvc.headerView.minMaxHeightIncludesSafeArea);
+
+    case FlexibleHeaderConfiguratorFieldCanAlwaysExpandToMaximumHeight:
+      return @(self.fhvc.headerView.canAlwaysExpandToMaximumHeight);
   }
 }
 
