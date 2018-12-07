@@ -78,6 +78,7 @@
 
   // Then
   XCTAssertNotEqual(cat, copiedCat);
+  XCTAssertEqual(cat.hash, copiedCat.hash);
   XCTAssertEqualObjects(cat, copiedCat);
   XCTAssertEqualObjects(cat.topRightCorner, copiedCat.topRightCorner);
   XCTAssertEqualObjects(cat.topLeftCorner, copiedCat.topLeftCorner);
