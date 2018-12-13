@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #import "MDCChipTextField.h"
+
 #import "MaterialChips.h"
+#import "MDCChipTextFieldScrollView.h"
 
 /*
  in progress:
@@ -33,8 +35,9 @@
 
 @interface MDCChipTextField ()
 
-@property (nonatomic, strong) UIView *chipsView;
-@property (nonatomic) CGFloat insetX;
+@property (nonatomic, strong) MDCChipTextFieldScrollView *chipsView;
+@property (nonatomic, readonly) CGFloat insetX;
+@property (nonatomic) CGFloat chipViewOffset;
 @property (nonatomic, strong) NSLayoutConstraint *leadingConstraint;
 @property (nonatomic, strong) NSMutableArray<MDCChipView *> *chips;
 
@@ -45,12 +48,14 @@
 - (instancetype)initWithFrame:(CGRect)frame {
   self = [super initWithFrame:frame];
   if (self) {
-    _chipsView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 160, frame.size.height)];
+    _chipsView = [[MDCChipTextFieldScrollView alloc] initWithFrame:CGRectZero];
+    _chipsView.chipSpacing = 10.0f;
     _chipsView.translatesAutoresizingMaskIntoConstraints = NO;
     _chipsView.backgroundColor = [UIColor yellowColor];
     _chipsView.clipsToBounds = YES;
+    _chipsView.bounces = NO;
+    _chipViewOffset = 0.0f;
     self.leftView = _chipsView;
-
     [self addTarget:self
              action:@selector(chipTextFieldTextDidChange)
    forControlEvents:UIControlEventEditingChanged];
@@ -68,28 +73,42 @@
   chip.titleLabel.text = text;
   chip.translatesAutoresizingMaskIntoConstraints = NO;
 
-  [self.chipsView addSubview:chip];
+//  [self.chipsView addSubview:chip];
 
   // Constraints
-  [self.chipsView addConstraints:@[
-     [NSLayoutConstraint constraintWithItem:self.chipsView attribute:NSLayoutAttributeTop relatedBy:NSLayoutRelationEqual toItem:chip attribute:NSLayoutAttributeTop multiplier:1.0 constant:0.0],
-     [NSLayoutConstraint constraintWithItem:self.chipsView attribute:NSLayoutAttributeBottom relatedBy:NSLayoutRelationEqual toItem:chip attribute:NSLayoutAttributeBottom multiplier:1.0 constant:0.0]
-     ]];
+//  [self.chipsView addConstraints:@[
+//     [NSLayoutConstraint constraintWithItem:self.chipsView attribute:NSLayoutAttributeTop relatedBy:NSLayoutRelationEqual toItem:chip attribute:NSLayoutAttributeTop multiplier:1.0 constant:0.0],
+//     [NSLayoutConstraint constraintWithItem:self.chipsView attribute:NSLayoutAttributeBottom relatedBy:NSLayoutRelationEqual toItem:chip attribute:NSLayoutAttributeBottom multiplier:1.0 constant:0.0]
+//     ]];
 
-  MDCChipView *lastChip = [self.chips lastObject];
-  if (lastChip == nil) {
-    self.leadingConstraint = [NSLayoutConstraint constraintWithItem:self.chipsView attribute:NSLayoutAttributeLeading relatedBy:NSLayoutRelationEqual toItem:chip attribute:NSLayoutAttributeLeading multiplier:1.0 constant:0];
-    [self.chipsView addConstraint:self.leadingConstraint];
-  } else {
-    [self.chipsView addConstraint:[NSLayoutConstraint constraintWithItem:lastChip attribute:NSLayoutAttributeTrailing relatedBy:NSLayoutRelationEqual toItem:chip attribute:NSLayoutAttributeLeading multiplier:1.0 constant:0]];
-  }
+//  MDCChipView *lastChip = [self.chips lastObject];
+//  if (lastChip == nil) {
+//    self.leadingConstraint = [NSLayoutConstraint constraintWithItem:self.chipsView attribute:NSLayoutAttributeLeading relatedBy:NSLayoutRelationEqual toItem:chip attribute:NSLayoutAttributeLeading multiplier:1.0 constant:0];
+//    [self.chipsView addConstraint:self.leadingConstraint];
+//  } else {
+//    [self.chipsView addConstraint:[NSLayoutConstraint constraintWithItem:lastChip attribute:NSLayoutAttributeTrailing relatedBy:NSLayoutRelationEqual toItem:chip attribute:NSLayoutAttributeLeading multiplier:1.0 constant:0]];
+//  }
 
   // recalculate the layout to get a correct chip frame values
-  [self.chipsView layoutIfNeeded];
-  self.insetX = CGRectGetMaxX(chip.frame);
+//  [chip sizeToFit];
   [self.chips addObject:chip];
+//  [self.chipsView reloadData];
+  [self.chipsView appendChipView:chip];
+  [self.chipsView layoutIfNeeded];
+//  self.insetX = CGRectGetMaxX(chip.frame);
+//  self.insetX = CGRectGetWidth(self.chipsView.frame);
 
   self.leftViewMode = UITextFieldViewModeAlways;
+}
+
+
+//- (void)setInsetX:(CGFloat)insetX {
+//  // TODO: The value should take the right view (cancel button etc.) into consideration.
+//  _insetX = MIN(insetX, CGRectGetWidth(self.frame) - 50);
+//}
+
+- (CGFloat)insetX {
+  return MAX(0, CGRectGetWidth(self.chipsView.frame) - self.chipViewOffset);
 }
 
 - (void)chipTextFieldTextDidChange {
@@ -118,9 +137,12 @@
   CGRect inputRect = [self firstRectForRange:textRange];
 
   CGFloat space = textRect.size.width - inputRect.size.width;
-  if (space < 0 || self.leadingConstraint.constant > 0) {
-    self.insetX += space;
-    self.leadingConstraint.constant -= space;
+  if (space < 0) {
+    self.chipViewOffset -= space;
+//    self.chipsView.offset = self.chipViewOffset;
+  } else {
+    self.chipViewOffset = MAX(self.chipViewOffset - space, 0);
+//    self.chipsView.offset = self.chipViewOffset;
   }
 }
 
@@ -156,8 +178,9 @@
 
 - (CGRect)leftViewRectForBounds:(CGRect)bounds {
   CGRect leftViewRect = [super leftViewRectForBounds:bounds];
-  leftViewRect.size.width = MAX(self.insetX, leftViewRect.size.width);
-  // leftViewRect.size.width = self.insetX;
+  leftViewRect.size.width = self.insetX;
+  // TODO: take margin into consideration
+  leftViewRect.size.width = MIN(CGRectGetWidth(self.frame), leftViewRect.size.width);
   return leftViewRect;
 }
 
@@ -191,24 +214,24 @@
 }
 
 - (void)removeChip:(MDCChipView *)chip {
-  [self.chips removeObject:chip];
-  [chip removeFromSuperview];
-
-  MDCChipView *lastChip = [self.chips lastObject];
-  self.insetX = CGRectGetMaxX(lastChip.frame) + 10;
-
-  CGFloat textFieldWidth = CGRectGetWidth([self textRectForBounds:self.bounds]);
-  if (self.leadingConstraint.constant > 0 &&  textFieldWidth > 0 ) {
-    self.insetX += textFieldWidth;
-    self.leadingConstraint.constant -= textFieldWidth;
-  }
-
-  [self invalidateIntrinsicContentSize];
-  [self setNeedsLayout];
-
-  if (self.chips.count == 0) {
-    self.leftViewMode = UITextFieldViewModeNever;
-  }
+//  [self.chips removeObject:chip];
+//  [chip removeFromSuperview];
+//
+//  MDCChipView *lastChip = [self.chips lastObject];
+////  self.insetX = CGRectGetMaxX(lastChip.frame) + 10;
+//
+//  CGFloat textFieldWidth = CGRectGetWidth([self textRectForBounds:self.bounds]);
+//  if (self.leadingConstraint.constant > 0 &&  textFieldWidth > 0 ) {
+////    self.insetX += textFieldWidth;
+//    self.leadingConstraint.constant -= textFieldWidth;
+//  }
+//
+//  [self invalidateIntrinsicContentSize];
+//  [self setNeedsLayout];
+//
+//  if (self.chips.count == 0) {
+//    self.leftViewMode = UITextFieldViewModeNever;
+//  }
 }
 
 - (void)removeSelectedChips {
