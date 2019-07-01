@@ -14,6 +14,10 @@
 
 #import "MDCSemanticColorScheme.h"
 
+#import "UITraitCollection+Material.h"
+
+#import <objc/runtime.h>
+
 static UIColor *ColorFromRGB(uint32_t colorValue) {
   return [UIColor colorWithRed:(CGFloat)(((colorValue >> 16) & 0xFF) / 255.0)
                          green:(CGFloat)(((colorValue >> 8) & 0xFF) / 255.0)
@@ -35,6 +39,29 @@ static CGFloat blendColorChannel(CGFloat value, CGFloat bValue, CGFloat alpha, C
   return ((1 - alpha) * bValue * bAlpha + alpha * value) / (alpha + bAlpha * (1 - alpha));
 }
 
+//static char MDCDynamicElevationObjectKey;
+
+static UIColor *DynamicColor(UIColor *defaultColor, UIColor *darkColor) {
+  if (@available(iOS 13.0, *)) {
+    return [UIColor colorWithDynamicProvider:^(UITraitCollection *traitCollection) {
+      if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+        return darkColor;
+      } else {
+        return defaultColor;
+      }
+    }];
+  } else {
+    return defaultColor;
+  }
+}
+
+@interface MDCSemanticColorScheme ()
+
+@property (nonatomic, readwrite, copy) UIColor *(^colorBlock)(UITraitCollection *);
+
+@end
+
+
 @implementation MDCSemanticColorScheme
 
 - (instancetype)init {
@@ -44,6 +71,25 @@ static CGFloat blendColorChannel(CGFloat value, CGFloat bValue, CGFloat alpha, C
 - (instancetype)initWithDefaults:(MDCColorSchemeDefaults)defaults {
   self = [super init];
   if (self) {
+    __weak typeof(self) weakSelf = self;
+    self.colorBlock = ^UIColor *(UITraitCollection *traitCollection) {
+      NSLog(@"%@", weakSelf);
+      NSDictionary *elevationToOverlay = @{@0 : @0, @1 : @5, @2 : @7};
+      NSNumber *elevation = [traitCollection getNumber];
+      CGFloat overlay = [elevationToOverlay[elevation] doubleValue];
+      if (@available(iOS 13.0, *)) {
+        if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+          UIColor *darkColor = ColorFromRGB(0x121212);
+          UIColor *overlayColor = [UIColor colorWithWhite:1 alpha:(overlay / 100)];
+          darkColor = [[weakSelf class] blendColor:overlayColor withBackgroundColor:darkColor];
+          return darkColor;
+        } else {
+          return ColorFromRGB(0xFFFFFF);
+        }
+      } else {
+        return ColorFromRGB(0xFFFFFF);
+      }
+    };
     switch (defaults) {
       case MDCColorSchemeDefaultsMaterial201804:
         _primaryColor = ColorFromRGB(0x6200EE);
@@ -57,6 +103,23 @@ static CGFloat blendColorChannel(CGFloat value, CGFloat bValue, CGFloat alpha, C
         _onSurfaceColor = ColorFromRGB(0x000000);
         _onBackgroundColor = ColorFromRGB(0x000000);
         break;
+
+
+      case MDCColorSchemeDefaultsMaterial201906: {
+        _primaryColor = DynamicColor(ColorFromRGB(0x6200EE), ColorFromRGB(0xBB86FC));
+        _primaryColorVariant = DynamicColor(ColorFromRGB(0x3700B3), ColorFromRGB(0x3700B3));
+        _secondaryColor = DynamicColor(ColorFromRGB(0x03DAC6), ColorFromRGB(0x03DAC6));
+        _errorColor = DynamicColor(ColorFromRGB(0xB00020), ColorFromRGB(0xCF6679));
+        if (@available(iOS 13.0, *)) {
+          _surfaceColor = [UIColor colorWithDynamicProvider:self.colorBlock];
+        }
+        _backgroundColor = DynamicColor(ColorFromRGB(0xFFFFFF), ColorFromRGB(0x121212));
+        _onPrimaryColor = DynamicColor(ColorFromRGB(0xFFFFFF), ColorFromRGB(0x000000));
+        _onSecondaryColor = DynamicColor(ColorFromRGB(0x000000), ColorFromRGB(0x000000));
+        _onSurfaceColor = DynamicColor(ColorFromRGB(0x000000), ColorFromRGB(0xFFFFFF));
+        _onBackgroundColor = DynamicColor(ColorFromRGB(0x000000), ColorFromRGB(0xFFFFFF));
+        break;
+      }
     }
   }
   return self;

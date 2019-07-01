@@ -219,4 +219,9 @@ static char kLevelKey;
   objc_setAssociatedObject(overlay, &kLevelKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
+//  [super traitCollectionDidChange:previousTraitCollection];
+  NSLog(@"HERE");
+}
+
 @end

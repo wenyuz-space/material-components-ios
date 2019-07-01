@@ -14,6 +14,8 @@
 
 #import "MDCButton.h"
 
+#import "UITraitCollection+Material.h"
+
 #import <MDFTextAccessibility/MDFTextAccessibility.h>
 #import "MaterialInk.h"
 #import "MaterialMath.h"
@@ -991,5 +993,6 @@ static NSAttributedString *uppercaseAttributedString(NSAttributedString *string)
 - (void)setUnderlyingColor:(UIColor *)underlyingColor {
   [self setUnderlyingColorHint:underlyingColor];
 }
+
 
 @end

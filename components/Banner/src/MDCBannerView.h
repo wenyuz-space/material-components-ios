@@ -96,4 +96,6 @@ __attribute__((objc_subclassing_restricted)) @interface MDCBannerView : UIView
 @property(nonatomic, readwrite, setter=mdc_setAdjustsFontForContentSizeCategory:, assign)
     BOOL mdc_adjustsFontForContentSizeCategory;
 
+@property(nonatomic, readwrite, assign) CGFloat elevation;
+
 @end

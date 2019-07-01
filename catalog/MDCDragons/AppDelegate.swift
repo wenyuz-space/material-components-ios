@@ -16,13 +16,14 @@
 
 import UIKit
 import CatalogByConvention
+import MaterialComponents.MaterialOverlayWindow
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
   var window: UIWindow?
 
   func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-    self.window = UIWindow(frame: UIScreen.main.bounds)
+    self.window = MDCOverlayWindow(frame: UIScreen.main.bounds)
     UIApplication.shared.statusBarStyle = .lightContent
     let tree = CBCCreateNavigationTree()
     var rootNodeViewController: UIViewController

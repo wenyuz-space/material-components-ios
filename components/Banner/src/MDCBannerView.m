@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#import "UITraitCollection+Material.h"
+
 #import "MDCBannerView.h"
 
 #import "MaterialButtons.h"
@@ -112,6 +114,7 @@ static NSString *const kMDCBannerViewImageViewImageKeyPath = @"image";
 - (void)commonBannerViewInit {
   self.backgroundColor = UIColor.whiteColor;
   _bannerViewLayoutStyle = MDCBannerViewLayoutStyleAutomatic;
+  _elevation = 2;
 
   // Create textLabel
   UILabel *textLabel = [[UILabel alloc] init];
@@ -165,6 +168,8 @@ static NSString *const kMDCBannerViewImageViewImageKeyPath = @"image";
   _divider = divider;
 
   [self setupConstraints];
+
+  [self.traitCollection setNumber:@(self.elevation)];
 }
 
 - (void)setBannerViewLayoutStyle:(MDCBannerViewLayoutStyle)bannerViewLayoutStyle {
@@ -548,7 +553,17 @@ static NSString *const kMDCBannerViewImageViewImageKeyPath = @"image";
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
   [self updateBannerFont];
+  NSLog(@"There");
 }
+
+
+
+//- (UITraitCollection *)traitCollection {
+//  UITraitCollection *traitCollection = [super traitCollection];
+//  [traitCollection setNumber:@(self.elevation)];
+//
+//  return traitCollection;
+//}
 
 - (void)updateBannerFont {
   [self updateTextFont];

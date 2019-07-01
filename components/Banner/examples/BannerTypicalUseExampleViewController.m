@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#import "UITraitCollection+Material.h"
 #import "MaterialBanner.h"
 #import "MaterialButtons.h"
 #import "MaterialColorScheme.h"
@@ -71,12 +72,33 @@ static NSString *const exampleExtraLongText =
 
 @end
 
+@interface ContentView : UIView
+
+@property(nonatomic, assign) CGFloat elevation;
+
+@end
+
+@implementation ContentView
+
+- (UITraitCollection *)traitCollection {
+  UITraitCollection *superTraitCollection = [[super traitCollection] copy];;
+  UITraitCollection *newTraitCollection = [[UITraitCollection alloc] init];
+  UITraitCollection *new2TraitCollection = [[UITraitCollection alloc] init];
+  newTraitCollection = nil;
+  new2TraitCollection = nil;
+  [superTraitCollection setNumber:@1];
+
+  return superTraitCollection;
+}
+
+@end
+
 @interface BannerTypicalUseExampleViewController
     : UIViewController <UITableViewDelegate, UITableViewDataSource>
 
 @property(nonatomic, strong) UITableView *exampleListTableView;
 @property(nonatomic, strong) NSArray<BannerExampleUseInfo *> *exampleList;
-@property(nonatomic, weak) UIView *contentView;
+@property(nonatomic, weak) ContentView *contentView;
 @property(nonatomic, weak) UILabel *contentViewLabel;
 @property(nonatomic, weak) MDCBannerView *bannerView;
 
@@ -90,7 +112,7 @@ static NSString *const exampleExtraLongText =
 - (instancetype)init {
   self = [super init];
   if (self) {
-    self.colorScheme = [[MDCSemanticColorScheme alloc] init];
+    self.colorScheme = [[MDCSemanticColorScheme alloc] initWithDefaults:MDCColorSchemeDefaultsMaterial201906];
     self.typographyScheme = [[MDCTypographyScheme alloc] init];
   }
   return self;
@@ -99,8 +121,10 @@ static NSString *const exampleExtraLongText =
 - (void)viewDidLoad {
   [super viewDidLoad];
   // Set up example content view
-  UIView *contentView = [[UIView alloc] initWithFrame:self.view.bounds];
-  contentView.backgroundColor = self.colorScheme.secondaryColor;
+  ContentView *contentView = [[ContentView alloc] initWithFrame:self.view.bounds];
+
+  contentView.elevation = 1;
+  contentView.backgroundColor = self.colorScheme.surfaceColor;
   UILabel *contentViewLabel = [[UILabel alloc] init];
   [contentView addSubview:contentViewLabel];
   contentViewLabel.text = @"Content View";
@@ -236,9 +260,9 @@ static NSString *const exampleExtraLongText =
   MDCButton *button = bannerView.leadingButton;
   [button setTitle:@"Dismiss" forState:UIControlStateNormal];
   button.uppercaseTitle = YES;
-  [button setTitleColor:self.colorScheme.primaryColor forState:UIControlStateNormal];
+//  [button setTitleColor:self.colorScheme.primaryColor forState:UIControlStateNormal];
   [button setTitleFont:self.typographyScheme.button forState:UIControlStateNormal];
-  button.backgroundColor = self.colorScheme.surfaceColor;
+//  button.backgroundColor = self.colorScheme.surfaceColor;
   bannerView.trailingButton.hidden = YES;
   bannerView.imageView.hidden = YES;
   bannerView.showsDivider = YES;
@@ -406,6 +430,13 @@ static NSString *const exampleExtraLongText =
   [button addTarget:self
                 action:@selector(dismissBanner)
       forControlEvents:UIControlEventTouchUpInside];
+}
+
+- (UITraitCollection *)traitCollection {
+  UITraitCollection *traitCollection = [super traitCollection];
+  [traitCollection setNumber:@(self.contentView.elevation)];
+
+  return traitCollection;
 }
 
 - (void)dismissBanner {
