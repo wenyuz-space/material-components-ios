@@ -35,7 +35,7 @@ static NSString *const kMDCBannerViewImageViewImageKeyPath = @"image";
 
 @interface MDCBannerView ()
 
-@property(nonatomic, readwrite, strong) UILabel *textLabel;
+@property(nonatomic, readwrite, strong) UITextView *textLabel;
 
 @property(nonatomic, readwrite, strong) UIImageView *imageView;
 
@@ -114,13 +114,15 @@ static NSString *const kMDCBannerViewImageViewImageKeyPath = @"image";
   _bannerViewLayoutStyle = MDCBannerViewLayoutStyleAutomatic;
 
   // Create textLabel
-  UILabel *textLabel = [[UILabel alloc] init];
+  UITextView *textLabel = [[UITextView alloc] init];
   textLabel.translatesAutoresizingMaskIntoConstraints = NO;
   textLabel.font = [MDCTypography body2Font];
   textLabel.textColor = UIColor.blackColor;
   textLabel.alpha = [MDCTypography body2FontOpacity];
-  textLabel.numberOfLines = kTextNumberOfLineLimit;
-  textLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+  textLabel.textContainer.maximumNumberOfLines = kTextNumberOfLineLimit;
+  textLabel.textContainer.lineBreakMode = NSLineBreakByTruncatingTail;
+  textLabel.scrollEnabled = NO;
+  textLabel.editable = NO;
   [self addSubview:textLabel];
   _textLabel = textLabel;
 
@@ -327,13 +329,13 @@ static NSString *const kMDCBannerViewImageViewImageKeyPath = @"image";
 - (CGSize)sizeThatFits:(CGSize)size {
   MDCBannerViewLayoutStyle layoutStyle = [self layoutStyleForSizeToFit:size];
   CGFloat frameHeight = 0.0f;
+  CGFloat widthLimit = size.width;
+  CGFloat marginsPadding = self.layoutMargins.left + self.layoutMargins.right;
+  widthLimit -= marginsPadding;
+  widthLimit -= (kLeadingPadding + kTrailingPadding);
   switch (layoutStyle) {
     case MDCBannerViewLayoutStyleSingleRow: {
       frameHeight += kTopPaddingSmall + kBottomPadding;
-      CGFloat widthLimit = size.width;
-      CGFloat marginsPadding = self.layoutMargins.left + self.layoutMargins.right;
-      widthLimit -= marginsPadding;
-      widthLimit -= (kLeadingPadding + kTrailingPadding);
       [self.leadingButton sizeToFit];
       CGFloat buttonWidth = CGRectGetWidth(self.leadingButton.frame);
       widthLimit -= (buttonWidth + kHorizontalSpaceBetweenTextLabelAndButton);
@@ -352,7 +354,8 @@ static NSString *const kMDCBannerViewImageViewImageKeyPath = @"image";
     }
     case MDCBannerViewLayoutStyleMultiRowAlignedButton: {
       frameHeight += kTopPaddingLarge + kBottomPadding;
-      frameHeight += [self getFrameHeightOfImageViewAndTextLabelWithSizeToFit:size];
+      CGSize remainingSize = CGSizeMake(widthLimit, size.height);
+      frameHeight += [self getFrameHeightOfImageViewAndTextLabelWithSizeToFit:remainingSize];
       CGSize leadingButtonSize = [self.leadingButton sizeThatFits:CGSizeZero];
       CGSize trailingButtonSize = [self.trailingButton sizeThatFits:CGSizeZero];
       frameHeight += MAX(leadingButtonSize.height, trailingButtonSize.height);
@@ -360,7 +363,8 @@ static NSString *const kMDCBannerViewImageViewImageKeyPath = @"image";
     }
     case MDCBannerViewLayoutStyleMultiRowStackedButton: {
       frameHeight += kTopPaddingLarge + kBottomPadding;
-      frameHeight += [self getFrameHeightOfImageViewAndTextLabelWithSizeToFit:size];
+      CGSize remainingSize = CGSizeMake(widthLimit, size.height);
+      frameHeight += [self getFrameHeightOfImageViewAndTextLabelWithSizeToFit:remainingSize];
       CGSize leadingButtonSize = [self.leadingButton sizeThatFits:CGSizeZero];
       CGSize trailingButtonSize = [self.trailingButton sizeThatFits:CGSizeZero];
       frameHeight +=
@@ -487,7 +491,7 @@ static NSString *const kMDCBannerViewImageViewImageKeyPath = @"image";
 
 - (CGFloat)getFrameHeightOfImageViewAndTextLabelWithSizeToFit:(CGSize)sizeToFit {
   CGFloat frameHeight = 0;
-  CGFloat remainingWidth = sizeToFit.width - kLeadingPadding - kTrailingPadding;
+  CGFloat remainingWidth = sizeToFit.width;
   CGSize textLabelSize = CGSizeZero;
   if (!self.imageView.hidden) {
     remainingWidth -= (kImageViewSideLength + kSpaceBetweenIconImageAndTextLabel);
@@ -512,7 +516,7 @@ static NSString *const kMDCBannerViewImageViewImageKeyPath = @"image";
   return buttonsWidthSum;
 }
 
-- (BOOL)isAbleToFitTextLabel:(UILabel *)textLabel withWidthLimit:(CGFloat)widthLimit {
+- (BOOL)isAbleToFitTextLabel:(UITextView *)textLabel withWidthLimit:(CGFloat)widthLimit {
   CGSize size = [textLabel sizeThatFits:CGSizeMake(CGFLOAT_MAX, CGFLOAT_MAX)];
   return size.width <= widthLimit;
 }

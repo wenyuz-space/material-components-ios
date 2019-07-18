@@ -48,7 +48,7 @@ __attribute__((objc_subclassing_restricted)) @interface MDCBannerView : UIView
  A view that displays the text on a @c MDCBannerView
  The properties of @c textLabel can be used to configure the text shown on @c MDCBannerView.
  */
-@property(nonatomic, readonly, strong, nonnull) UILabel *textLabel;
+@property(nonatomic, readonly, strong, nonnull) UITextView *textLabel;
 
 /**
  A view that displays the image on a @c MDCBannerView.
