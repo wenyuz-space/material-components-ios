@@ -30,6 +30,9 @@ mdc_public_objc_library(
     sdk_frameworks = [
         "CoreGraphics",
     ],
+    deps = [
+        "//components/private/Color",
+    ],
 )
 
 mdc_unit_test_objc_library(

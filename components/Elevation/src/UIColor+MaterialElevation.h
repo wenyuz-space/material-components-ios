@@ -12,7 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#import "MDCElevatable.h"
-#import "MDCElevationOverriding.h"
-#import "UIView+MaterialElevationResponding.h"
-#import "UIColor+MaterialElevation.h"
+#import <UIKit/UIKit.h>
+
+NS_ASSUME_NONNULL_BEGIN
+
+@interface UIColor (MaterialElevation)
+
+- (UIColor *)resolvedColorWithElevation:(CGFloat)elevation;
+
+- (UIColor *)resolvedColorWithTraitCollection:(UITraitCollection *)traitCollection
+                                 andElevation:(CGFloat)elevation API_AVAILABLE(ios(13.0));
+
+- (UIColor *)resolvedColorWithElevation:(CGFloat)elevation
+                           overlayColor:(UIColor *)overlayColor;
+
+@end
+
+NS_ASSUME_NONNULL_END
